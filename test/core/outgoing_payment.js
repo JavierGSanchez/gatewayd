@@ -1,6 +1,7 @@
 var assert = require('assert');
 var gateway = require(__dirname+'/../../');
 var OutgoingPayment = require(__dirname+'/../../lib/core/outgoing_payment.js');
+var fixtures = require(__dirname+'/../fixtures/transactions.js');
 var outgoingTransactionRecord;
 var restConfirmationResponse;
 
@@ -17,23 +18,8 @@ describe('Outgoing Payment', function() {
         status_url: 'http://localhost:5990/v1/accounts/rscJF4TWS2jBe43MvUomTtCcyrbtTRMSNr/payments/a2837056-20e8-410a-b730-879dd0493742'
       };
 
-      outgoingPayment._markRecordAsSent(rippleRestResponse, function() {
+      outgoingPayment._finalizeOutgoingPayment(rippleRestResponse, function() {
         assert.strictEqual(outgoingPayment.record.state, 'sent');
-        done();
-      });
-    });
-
-    it('should confirm the acceptance of the payment into the Ripple Ledger', function(done) {
-      var outgoingPayment = new OutgoingPayment(outgoingTransactionRecord);
-      var rippleRestResponse = {
-        success: true,
-        client_resource_id: 'a2837056-20e8-410a-b730-879dd0493742',
-        status_url: 'http://localhost:5990/v1/accounts/rscJF4TWS2jBe43MvUomTtCcyrbtTRMSNr/payments/a2837056-20e8-410a-b730-879dd0493742'
-      };
-
-      outgoingPayment._confirmSuccessfulPayment(rippleRestResponse, function(error) {
-        assert.strictEqual(outgoingPayment.record.state, 'sent');
-        assert(!error);
         done();
       });
     });
@@ -64,6 +50,18 @@ describe('Outgoing Payment', function() {
       outgoingPayment._handleRippleRestFailure('retry', function(error) {
         assert(!error);
         assert.strictEqual(outgoingPayment.record.state, 'outgoing');
+        done();
+      });
+    });
+
+    it('should record sent and confirmed a ripple payment with a hash', function(done){
+      this.timeout(10000);
+      var outgoingPayment = new OutgoingPayment(outgoingTransactionRecord);
+
+      outgoingPayment._sendAndConfirmPayment(fixtures.valid_xrp_payment, function(error, response){
+        assert(!error);
+        assert(response.hash);
+        assert.strictEqual(response.result, 'tesSUCCESS');
         done();
       });
     });
